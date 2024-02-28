@@ -6,9 +6,8 @@ echo "Current GPU status:"
 nvidia-smi
 
 # Default values
-default_port=8888
+default_port=8888  # Jupyter notebook default port
 current_user=$(whoami)
-# Use the name of the current directory as the default container name
 dir_name=$(basename "$(pwd)")
 default_container_name="${dir_name}-container"
 default_image_name="pytorch:23.02-py3"
@@ -46,17 +45,24 @@ if [ -z "$available_gpus" ]; then
     exit 1
 fi
 
-echo "All GPUs available: $available_gpus"
+echo "All GPUs are available: $available_gpus"
 
 # Ask for custom port or find next available port starting from the default
-read -p "Enter the port to use (default: $default_port): " port
+read -p "Enter the port to use for Jupyter (default: $default_port): " port
 port=${port:-$default_port}
 port=$(find_next_available_port $port)
 
-echo "Using port $port for the Docker container"
+echo "Using port $port for the Docker container's Jupyter Notebook"
 
-# Command to run Docker container, mapping user ID and group ID to match the host, enabling file editing from outside
-docker_command="docker run -it --rm --detach-keys=\"ctrl-a\" --name=$container_name --gpus '\"device=$available_gpus\"' --ipc=host -p $port:8888 -v `pwd`:/workspace -u $(id -u):$(id -g) $image_name"
+# Create the Jupyter run script inside the container
+jupyter_run_script="jupyter.sh"
+echo "#!/bin/bash" > $jupyter_run_script
+echo 'echo "The Jupyter Notebook will be accessible at http://localhost:"'$port > $jupyter_run_script
+echo "jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root --NotebookApp.token='' --NotebookApp.password=''" >> $jupyter_run_script
+chmod +x $jupyter_run_script
+
+# Command to run
+docker_command="docker run -it --rm --detach-keys=\"ctrl-a\" --name=$container_name --gpus '\"device=$available_gpus\"' --ipc=host -p $port:8888 -v `pwd`:/workspace -v `pwd`/$jupyter_run_script:/workspace/$jupyter_run_script -u $(id -u):$(id -g) $image_name"
 
 # Run Docker container
 echo "Running Docker container with the following settings:"
