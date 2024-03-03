@@ -34,8 +34,25 @@ read -p "Enter a name for the new container (default: $default_container_name): 
 container_name=${container_name:-$default_container_name}
 
 # Ask for custom Docker image or use default
-read -p "Enter the Docker image to use (default: $default_image_name): " image_name
-image_name=${image_name:-$default_image_name}
+# read -p "Enter the Docker image to use (default: $default_image_name): " image_name
+# image_name=${image_name:-$default_image_name}
+
+# Use fzf to select a Docker image interactively or allow manual input
+read -r -p "Type to search or enter Docker image name: " typed_image_name
+selected_image=$(echo -e "$typed_image_name\n$(docker images --format "{{.Repository}}:{{.Tag}}" | sort)" | fzf --print-query --prompt="Select a Docker image: " --height=20 --border --preview="docker inspect {1}" --preview-window=down:60%:wrap)
+
+# The first line is the query (what the user typed), and the second line (if any) is the selected image
+image_name=$(echo "$selected_image" | sed -n 2p)
+typed_image_name=$(echo "$selected_image" | sed -n 1p)
+
+# If no image was selected but a name was typed, use the typed name
+if [ -z "$image_name" ] && [ ! -z "$typed_image_name" ]; then
+    image_name=$typed_image_name
+elif [ -z "$image_name" ]; then
+    image_name=$default_image_name
+fi
+
+echo "Selected Docker image: $image_name"
 
 available_gpus=$(nvidia-smi --query-gpu=index --format=csv,noheader,nounits | paste -sd "," -)
 

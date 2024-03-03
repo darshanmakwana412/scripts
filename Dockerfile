@@ -1,5 +1,7 @@
 # Use the NVIDIA PyTorch image as the base
-FROM nvcr.io/nvidia/pytorch:23.02-py3
+#FROM nvcr.io/nvidia/pytorch:23.02-py3
+
+FROM jupyter/datascience-notebook
 
 # Argument for user ID
 ARG USER_ID=1000
